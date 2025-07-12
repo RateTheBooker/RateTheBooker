@@ -11,16 +11,108 @@ document.getElementById('refreshStatsBtn').addEventListener('click', () => {
     renderStatistics();
 });
 
+async function saveBookToCloud(bookData) {
+    const Book = Parse.Object.extend("Book");
+    const book = new Book();
+
+    book.set("title", bookData.title);
+    book.set("author", bookData.author);
+    book.set("category", bookData.category);
+    book.set("format", bookData.format);
+    book.set("pages", bookData.pages);
+    book.set("rating", bookData.rating);
+    book.set("endDate", new Date(bookData.endDate));
+    book.set("terminado", bookData.terminado);
+    if (bookData.startDate) {
+        book.set("startDate", new Date(bookData.startDate));
+    } else {
+        alert("❗ La fecha de inicio es obligatoria.");
+        return;
+    }
+
+    const currentUser = Parse.User.current();
+    if (currentUser) {
+        book.set("user", currentUser);
+        const acl = new Parse.ACL(currentUser);
+        book.setACL(acl);
+    }
+
+    try {
+        await saveBookToCloud(book.toJSON());
+        console.log("📚 Libro guardado en la nube");
+    } catch (error) {
+        console.error("❌ Error al guardar libro:", error);
+    }
+}
+
+async function loadUserBooks() {
+    const currentUser = Parse.User.current();
+    if (!currentUser) return [];
+
+    const Book = Parse.Object.extend("Book");
+    const query = new Parse.Query(Book);
+    query.equalTo("user", currentUser);
+    query.descending("createdAt");
+
+    try {
+        const results = await query.find();
+        return results.map(book => ({
+            id: book.id,
+            title: book.get("title"),
+            author: book.get("author"),
+            category: book.get("category"),
+            format: book.get("format"),
+            pages: book.get("pages"),
+            rating: book.get("rating"),
+            startDate: book.get("startDate"),
+            endDate: book.get("endDate"),
+            terminado: book.get("terminado")
+        }));
+    } catch (error) {
+        console.error("❌ Error al cargar libros:", error);
+        return [];
+    }
+}
 
 
-document.addEventListener('DOMContentLoaded', function () {
-    // Inicializar variables
-    let books = JSON.parse(localStorage.getItem('books')) || [];
-    let filteredBooksGlobal = []; // aquí se guardarán los libros filtrados activamente
-    let categories = JSON.parse(localStorage.getItem('customCategories')) || [];
+
+document.addEventListener('DOMContentLoaded', async () => {
+    let books = [];
+    let filteredBooksGlobal = [];
+    let categories = [];
+
+
+    async function loadCategories() {
+        const currentUser = Parse.User.current();
+        if (!currentUser) return;
+
+        try {
+            // Cargar desde localStorage (si existen)
+            const storedCategories = JSON.parse(localStorage.getItem('customCategories')) || [];
+
+            // Cargar desde Parse
+            const Category = Parse.Object.extend("Category");
+            const query = new Parse.Query(Category);
+            query.equalTo("user", currentUser);
+            const results = await query.find();
+
+            const parseCategories = results.map(cat => cat.get("name"));
+
+            // Combinar y eliminar duplicados
+            categories = [...new Set([...storedCategories, ...parseCategories])];
+
+            // Guardar en localStorage para futuras sesiones
+            localStorage.setItem('customCategories', JSON.stringify(categories));
+        } catch (err) {
+            console.error("❌ Error al cargar categorías:", err.message);
+        }
+    }
     let currentBookId = null;
     let currentPage = 1;
     const booksPerPage = 6;
+
+    // Cargar libros desde la nube
+    books = await loadUserBooks();
 
     // Función para copiar texto al portapapeles
     function copyToClipboard(text, message = "Texto copiado!") {
@@ -183,7 +275,7 @@ document.addEventListener('DOMContentLoaded', function () {
             filteredBooksGlobal = books;
             filteredBooksGlobal.isFiltered = false;
             currentPage = 1;
-            updateLibraryView();
+            location.reload();
             showToast("📖 Vista previa de libros compartidos");
 
             // Preguntar si se desea guardar
@@ -200,7 +292,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 filteredBooksGlobal = books;
                 filteredBooksGlobal.isFiltered = false;
                 currentPage = 1;
-                updateLibraryView();
+                location.reload();
 
                 showToast(`✅ ${newBooks.length} libro(s) añadido(s) a tu biblioteca`);
             }
@@ -258,8 +350,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const ratingStars = document.querySelectorAll('.star');
 
     // Inicializar la biblioteca
-    updateLibraryView();
-    updateCategoryOptions();
     document.getElementById('clearOutfilterBtn').addEventListener('click', () => {
         document.getElementById('filterCategory').value = '';
         document.getElementById('filterEstado').value = '';
@@ -970,6 +1060,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateLibraryView() {
+        setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+        console.log("📚 Libros cargados:", books);
         console.log('searchInput:', searchInput);
         console.log('filterCategory:', filterCategory);
         const isFiltered = filteredBooksGlobal.isFiltered;
@@ -994,6 +1086,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function renderPaginationControls(totalBooks) {
         const totalPages = Math.ceil(totalBooks / booksPerPage);
+        setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
         let paginationContainer = document.getElementById('paginationControls');
 
         if (!paginationContainer) {
@@ -1078,11 +1171,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateCategoryOptions() {
-        // Actualizar opciones en el selector de categorías del formulario
-        const defaultCategories = ['Novela', 'Ciencia Ficción', 'Fantasía', 'Historia', 'Biografía', 'Autoayuda'];
+        const defaultCategories = ['Novela', 'Ciencia Ficción', 'Fantasía', 'Misterio', 'Romance', 'Dark Romance', 'Cómics', 'Poesía'];
+        let categoryOptions = '<option value="">Selecciona un género</option>';
 
-        // Actualizar el selector de categorías en el formulario
-        let categoryOptions = `<option value="">Selecciona un género</option>`;
         defaultCategories.forEach(cat => {
             categoryOptions += `<option value="${cat}">${cat}</option>`;
         });
@@ -1092,18 +1183,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         categorySelect.innerHTML = categoryOptions;
+        filterCategory.innerHTML = categoryOptions;
+    }
 
-        // Actualizar el selector de filtro de categorías
-        let filterOptions = `<option value="">Todos los géneros</option>`;
-        defaultCategories.forEach(cat => {
-            filterOptions += `<option value="${cat}">${cat}</option>`;
-        });
-
-        categories.forEach(cat => {
-            filterOptions += `<option value="${cat}">${cat}</option>`;
-        });
-
-        filterCategory.innerHTML = filterOptions;
+    function formatDateForInput(date) {
+        if (!date) return '';
+        const d = new Date(date);
+        if (isNaN(d.getTime())) return ''; // Validación adicional
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${year}-${month}-${day}`;
     }
 
 
@@ -1187,21 +1277,57 @@ document.addEventListener('DOMContentLoaded', function () {
         categoryModal.classList.add('hidden');
     }
 
-    function saveCategory(e) {
+    async function saveCategory(e) {
         e.preventDefault();
-
         const newCategory = document.getElementById('newCategory').value.trim();
 
-        if (newCategory && !categories.includes(newCategory)) {
-            categories.push(newCategory);
-            localStorage.setItem('customCategories', JSON.stringify(categories));
-            updateCategoryOptions();
-
-            // Seleccionar la nueva categoría
-            categorySelect.value = newCategory;
+        if (!newCategory || newCategory === '') {
+            showToast("⚠️ Escribe un nombre para la categoría.");
+            return;
         }
 
-        closeCategoryModal();
+        const currentUser = Parse.User.current();
+        if (!currentUser) {
+            alert("❌ Debes iniciar sesión para añadir una categoría.");
+            return;
+        }
+
+        // Verificar si ya existe localmente
+        if (categories.includes(newCategory)) {
+            showToast("📘 Esta categoría ya existe.");
+            closeCategoryModal();
+            return;
+        }
+
+        try {
+            // Crear objeto Parse Category
+            const Category = Parse.Object.extend("Category");
+            const category = new Category();
+
+            category.set("name", newCategory);
+            category.set("user", currentUser); // Relación con el usuario
+
+            // ACL: solo el usuario puede editar su categoría
+            const acl = new Parse.ACL(currentUser);
+            category.setACL(acl);
+
+            await category.save();
+
+            // Añadimos a la lista local
+            categories.push(newCategory);
+            localStorage.setItem('customCategories', JSON.stringify(categories));
+
+            updateCategoryOptions(); // Actualizar selects
+
+            // Seleccionar la nueva categoría en el formulario
+            categorySelect.value = newCategory;
+
+            showToast(`✅ Categoría "${newCategory}" guardada.`);
+            closeCategoryModal();
+        } catch (err) {
+            console.error("❌ Error al guardar la categoría:", err.message);
+            showToast("Hubo un error al guardar la categoría.");
+        }
     }
 
 
@@ -1229,7 +1355,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    function saveBook(e) {
+    async function saveBook(e) {
         e.preventDefault();
 
         const title = document.getElementById('title').value.trim();
@@ -1284,7 +1410,7 @@ document.addEventListener('DOMContentLoaded', function () {
             books.push(newBook);
         }
 
-        localStorage.setItem('books', JSON.stringify(books));
+        //await saveBookToCloud(newBook);
         closeBookModal();
         updateLibraryView();
     }
@@ -1304,8 +1430,8 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('detailPages').textContent = book.pages || 'No especificado';
         document.getElementById('detailDescription').textContent = book.description || 'Sin descripción';
         document.getElementById('detailReview').textContent = book.review || 'Sin reseña';
-        document.getElementById('startDate').value = book?.startDate || '';
-        document.getElementById('endDate').value = book?.endDate || '';
+        document.getElementById('startDate').value = book.startDate || '';
+        document.getElementById('endDate').value = book.endDate || '';
         document.getElementById('detailStartDate').textContent = formatDateToDisplay(book.startDate);
         document.getElementById('detailEndDate').textContent = formatDateToDisplay(book.endDate);
         document.getElementById('detailEstado').textContent =
@@ -1381,12 +1507,117 @@ document.addEventListener('DOMContentLoaded', function () {
         confirmModal.classList.add('hidden');
     }
 
-    function deleteCurrentBook() {
-        books = books.filter(book => book.id !== currentBookId);
-        localStorage.setItem('books', JSON.stringify(books));
-        updateLibraryView();
-        closeConfirmModal();
+    async function deleteCurrentBook() {
+        if (!currentBookId) {
+            console.error("❌ No hay libro seleccionado para borrar");
+            return;
+        }
+
+        try {
+            const Book = Parse.Object.extend("Book");
+            const query = new Parse.Query(Book);
+
+            // Buscar el libro por ID
+            const bookToDelete = await query.get(currentBookId);
+
+            if (!bookToDelete) {
+                showToast("Libro no encontrado");
+                return;
+            }
+
+            // Eliminarlo de Parse
+            await bookToDelete.destroy();
+
+            console.log("✅ Libro eliminado correctamente:", currentBookId);
+
+            // Actualizar la lista local (opcional si usas datos locales también)
+            books = books.filter(book => book.id !== currentBookId);
+
+            // Actualizar la interfaz
+            updateLibraryView();
+
+            // Cerrar modal
+            closeConfirmModal();
+
+            showToast("🗑️ Libro eliminado de tu biblioteca");
+
+        } catch (error) {
+            console.error("❌ Error al eliminar el libro:", error.message);
+            showToast("Hubo un problema al eliminar el libro");
+        }
     }
+
+    async function checkUser() {
+        const user = Parse.User.current();
+        const authModal = document.getElementById('authModal');
+        const appMain = document.querySelector('main');
+
+        if (user) {
+            authModal.classList.add('hidden');
+            appMain.classList.remove('hidden');
+            books = await loadUserBooks();
+            updateLibraryView();
+        } else {
+            authModal.classList.remove('hidden');
+            appMain.classList.add('hidden');
+        }
+    }
+
+    // Cambiar vistas
+    document.getElementById('switchToRegister').addEventListener('click', () => {
+        document.getElementById('loginView').classList.add('hidden');
+        document.getElementById('registerView').classList.remove('hidden');
+    });
+
+    document.getElementById('switchToLogin').addEventListener('click', () => {
+        document.getElementById('registerView').classList.add('hidden');
+        document.getElementById('loginView').classList.remove('hidden');
+    });
+
+    // Iniciar sesión
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+        const user = document.getElementById('loginUser').value.trim();
+        const pass = document.getElementById('loginPassword').value;
+
+        try {
+            await Parse.User.logIn(user, pass);
+            showToast("✅ Sesión iniciada");
+            checkUser(); // oculta modal y carga libros
+        } catch (err) {
+            alert("❌ Error al iniciar sesión: " + err.message);
+        }
+    });
+
+    // Registrarse
+    document.getElementById('registerBtn').addEventListener('click', async () => {
+        const username = document.getElementById('registerUsername').value.trim();
+        const email = document.getElementById('registerEmail').value.trim();
+        const pass = document.getElementById('registerPassword').value;
+        const confirm = document.getElementById('registerConfirm').value;
+
+        if (!username || !email || !pass || !confirm) {
+            alert("Por favor, completa todos los campos");
+            return;
+        }
+
+        if (pass !== confirm) {
+            alert("Las contraseñas no coinciden");
+            return;
+        }
+
+        const user = new Parse.User();
+        user.set("username", username);
+        user.set("email", email);
+        user.set("password", pass);
+
+        try {
+            await user.signUp();
+            showToast("✅ Registro exitoso");
+            checkUser();
+        } catch (err) {
+            alert("❌ Error al registrarse: " + err.message);
+        }
+    });
 
     function filterBooks() {
         const searchTerm = searchInput.value.toLowerCase();
@@ -1484,7 +1715,17 @@ document.addEventListener('DOMContentLoaded', function () {
             themeCustom.classList.add('border-white');
         }
     }
-}); function showToast(msg) {
+
+
+
+    checkUser();
+
+    updateLibraryView();
+    updateCategoryOptions();
+
+});
+
+function showToast(msg) {
     const toast = document.createElement('div');
     toast.textContent = msg;
 
@@ -1524,19 +1765,45 @@ document.addEventListener('DOMContentLoaded', function () {
 }
 
 // Botón de exportar
-document.getElementById('exportBooksBtn').addEventListener('click', () => {
-    const books = JSON.parse(localStorage.getItem('books')) || [];
-    const dataStr = JSON.stringify(books, null, 2);
+document.getElementById('exportBooksBtn').addEventListener('click', async () => {
+    const currentUser = Parse.User.current();
+    if (!currentUser) return alert("Inicia sesión para exportar tus libros");
 
-    // Crear un textarea temporal oculto
-    const textarea = document.createElement('textarea');
-    textarea.value = dataStr;
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textarea);
+    const Book = Parse.Object.extend("Book");
+    const query = new Parse.Query(Book);
+    query.equalTo("user", currentUser);
+    query.descending("createdAt");
 
-    showToast('📋 Datos copiados al portapapeles -> Crea un documento .json y pega el contenido exportado para tener tu copia de seguridad.');
+    try {
+        const results = await query.find();
+        const booksData = results.map(book => ({
+            objectId: book.id,
+            ACL: book.getACL()?.toJSON() || {},
+            updatedAt: book.updatedAt,
+            createdAt: book.createdAt,
+            title: book.get("title"),
+            author: book.get("author"),
+            category: book.get("category"),
+            format: book.get("format"),
+            rating: book.get("rating"),
+            endDate: book.get("endDate"),
+            startDate: book.get("startDate"),
+            terminado: book.get("terminado"),
+            pages: book.get("pages"),
+            user: book.get("user")?.id || null
+        }));
+
+        const blob = new Blob([JSON.stringify(booksData, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "libros_exportados.json";
+        a.click();
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error("❌ Error al exportar libros:", error);
+        showToast("Hubo un problema al exportar tus libros.");
+    }
 });
 
 
@@ -1545,76 +1812,102 @@ document.getElementById('importBooksBtn').addEventListener('click', () => {
     document.getElementById('importBooksInput').click();
 });
 
-document.getElementById('importBooksInput').addEventListener('change', function (e) {
-    const file = e.target.files[0];
+document.getElementById('importBooksInput').addEventListener('change', async (event) => {
+    const file = event.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = function (event) {
-        try {
-            let importedBooks = JSON.parse(event.target.result);
+    try {
+        const text = await file.text();
+        const booksToImport = JSON.parse(text);
 
-            if (!Array.isArray(importedBooks)) throw new Error('El archivo no contiene un array');
+        const currentUser = Parse.User.current();
+        if (!currentUser) return showToast("Debes iniciar sesión para importar libros");
 
-            // Normalizar cada libro y evitar nulls
-            importedBooks = importedBooks.map(book => ({
-                id: book.id || crypto.randomUUID(),
-                title: typeof book.title === 'string' ? book.title : '',
-                author: typeof book.author === 'string' ? book.author : '',
-                category: typeof book.category === 'string' ? book.category : '',
-                format: typeof book.format === 'string' ? book.format : '',
-                rating: typeof book.rating === 'string' || typeof book.rating === 'number' ? String(book.rating) : '',
-                review: typeof book.review === 'string' ? book.review : '',
-                description: typeof book.description === 'string' ? book.description : '',
-                addedDate: book.addedDate || new Date().toISOString(),
-                startDate: book.startDate || '',
-                endDate: book.endDate || '',
-                pages: Number(book.pages) || 0,
-                terminado: book.terminado || ''
-            }));
+        // Crear una consulta para obtener los libros existentes del usuario
+        const Book = Parse.Object.extend("Book");
+        const query = new Parse.Query(Book);
+        query.equalTo("user", currentUser);
+        const existingBooks = await query.find();
 
-            const existingBooks = JSON.parse(localStorage.getItem('books')) || [];
-            const existingMap = new Map();
-            existingBooks.forEach(book => {
-                const key = book.id || book.title.toLowerCase();
-                existingMap.set(key, book);
-            });
+        // Extraer títulos y autores de los libros existentes
+        const existingTitlesAuthors = new Set(
+            existingBooks.map(book => `${book.get("title")}||${book.get("author")}`)
+        );
 
-            let added = 0;
-            let duplicated = 0;
+        let addedCount = 0;
+        let skippedCount = 0;
 
-            importedBooks.forEach(book => {
-                const key = book.id || book.title.toLowerCase();
-                if (!existingMap.has(key)) {
-                    existingBooks.push(book);
-                    existingMap.set(key, book);
-                    added++;
-                } else {
-                    duplicated++;
-                }
-            });
+        // Procesar cada libro del archivo
+        for (const bookData of booksToImport) {
+            const title = bookData.title || "Sin título";
+            const author = bookData.author || "Desconocido";
+            const titleAuthorKey = `${title}||${author}`;
 
-            console.log('✅ Importación completada sin errores.');
-            showToast(`✅ Libros importados correctamente.\n\n➕ ${added} añadido(s)\n🔁 ${duplicated} duplicado(s) ignorado(s)`);
-            books = existingBooks;
-            localStorage.setItem('books', JSON.stringify(books));
+            // Si ya existe, lo saltamos
+            if (existingTitlesAuthors.has(titleAuthorKey)) {
+                skippedCount++;
+                console.log("📘 Libro duplicado, saltado:", title);
+                continue;
+            }
 
-            currentPage = 1;
-            // Esto actualiza todo correctamente  
+            // Si no es duplicado, lo creamos y guardamos
+            const book = new Book();
 
-            document.getElementById('importBooksInput').value = '';
+            book.set("title", title);
+            book.set("author", author);
+            book.set("category", bookData.category || "Sin categoría");
+            book.set("format", bookData.format || "Sin formato");
+            book.set("pages", parseInt(bookData.pages) || 0);
+            book.set("rating", parseFloat(bookData.rating) || 0);
 
-            setTimeout(() => {
-                location.reload();
-            }, 3000);
+            // ✅ Corrección para endDate
+            let endDate = null;
+            if (bookData.endDate && !isNaN(new Date(bookData.endDate).getTime())) {
+                endDate = new Date(bookData.endDate);
+            }
+            book.set("endDate", endDate);
 
-        } catch (error) {
-            console.error('❌ Error real al importar libros:', error);
-            showToast('❌ Error: El archivo no tiene un formato válido o no cumple con la estructura esperada.');
+            let startDate = null;
+            if (bookData.startDate && !isNaN(new Date(bookData.startDate).getTime())) {
+                startDate = new Date(bookData.startDate);
+            }
+            book.set("startDate", startDate);
+            book.set("terminado", bookData.terminado || "Pendiente");
+
+            if (currentUser) {
+                book.set("user", currentUser);
+                const acl = new Parse.ACL(currentUser);
+                book.setACL(acl);
+            }
+
+            try {
+                await book.save();
+                console.log("✅ Libro importado:", title);
+                addedCount++;
+            } catch (err) {
+                console.error("❌ Error al guardar libro:", err.message);
+            }
         }
-    };
-    reader.readAsText(file);
+
+        // Mostrar resumen final
+        if (addedCount > 0 && skippedCount > 0) {
+            showToast(`✅ Se han añadido ${addedCount} libro(s) nuevo(s). 📘 ${skippedCount} duplicado(s) omitido(s).`);
+        } else if (addedCount > 0) {
+            showToast(`✅ Se han añadido ${addedCount} libro(s) nuevo(s).`);
+        } else if (skippedCount > 0) {
+            showToast(`📘 Todos los libros ya estaban en tu biblioteca. ${skippedCount} duplicado(s) omitido(s).`);
+        } else {
+            showToast("📦 El archivo no contiene libros válidos.");
+        }
+
+    } catch (error) {
+        console.error("❌ Error al procesar el archivo de importación:", error.message);
+        showToast("Hubo un error al importar el archivo.");
+    }
+
+    location.reload();
 });
+
 window.addEventListener('storage', function (e) {
     if (e.key === 'books') {
         updateLibraryView();
@@ -1624,18 +1917,7 @@ window.addEventListener('storage', function (e) {
 
 const channel = new BroadcastChannel('book_updates');
 
-// Cuando se guarden libros:
-localStorage.setItem('books', JSON.stringify(books));
-channel.postMessage({ type: 'books-updated' });
-
-// Escuchar mensajes
-channel.onmessage = function (event) {
-    if (event.data.type === 'books-updated') {
-        updateLibraryView();
-    }
-};
-
-localStorage.setItem('books', JSON.stringify(books));
-updateLibraryView(); // <-- Esto actualiza la vista inmediatamente
 (function () { function c() { var b = a.contentDocument || a.contentWindow.document; if (b) { var d = b.createElement('script'); d.innerHTML = "window.__CF$cv$params={r:'953d08dce5f8314b',t:'MTc1MDYwODgyNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);"; b.getElementsByTagName('head')[0].appendChild(d) } } if (document.body) { var a = document.createElement('iframe'); a.height = 1; a.width = 1; a.style.position = 'absolute'; a.style.top = 0; a.style.left = 0; a.style.border = 'none'; a.style.visibility = 'hidden'; document.body.appendChild(a); if ('loading' !== document.readyState) c(); else if (window.addEventListener) document.addEventListener('DOMContentLoaded', c); else { var e = document.onreadystatechange || function () { }; document.onreadystatechange = function (b) { e(b); 'loading' !== document.readyState && (document.onreadystatechange = e, c()) } } } })();
+
+
 

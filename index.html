@@ -16,11 +16,52 @@
     <!-- Estilos personalizados -->
     <link rel="stylesheet" href="styles.css">
 
+    <script src="https://npmcdn.com/parse/dist/parse.min.js"></script>
+    <script>
+        Parse.initialize("Giqk0tt2TYAn5pkVzqAbQHisSWyN9auEKT7LlkhO", "0l5SUR5CAolC3B3YiTEdKLFZCMnmHMlWlVwRGeam");
+        Parse.serverURL = "https://parseapi.back4app.com/";
+    </script>
+
     <!-- Lógica personalizada -->
     <script defer src="main.js"></script>
 </head>
 
 <body class="theme-amber">
+    
+    <div id="authModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+
+            <!-- LOGIN VIEW -->
+            <div id="loginView">
+                <h2 class="text-xl font-bold mb-4 text-center">Iniciar Sesión</h2>
+                <input id="loginUser" type="text" placeholder="Nombre de usuario o Email"
+                    class="w-full p-2 mb-2 border rounded" />
+                <input id="loginPassword" type="password" placeholder="Contraseña"
+                    class="w-full p-2 mb-4 border rounded" />
+                <button id="loginBtn" class="w-full bg-blue-600 text-white p-2 rounded mb-2">Entrar</button>
+                <p class="text-sm text-center">¿No tienes cuenta? <button id="switchToRegister"
+                        class="text-blue-600 underline">Regístrate</button></p>
+            </div>
+
+            <!-- REGISTER VIEW -->
+            <div id="registerView" class="hidden">
+                <h2 class="text-xl font-bold mb-4 text-center">Crear Cuenta</h2>
+                <input id="registerUsername" type="text" placeholder="Nombre de usuario"
+                    class="w-full p-2 mb-2 border rounded" />
+                <input id="registerEmail" type="email" placeholder="Correo electrónico"
+                    class="w-full p-2 mb-2 border rounded" />
+                <input id="registerPassword" type="password" placeholder="Contraseña"
+                    class="w-full p-2 mb-2 border rounded" />
+                <input id="registerConfirm" type="password" placeholder="Confirmar contraseña"
+                    class="w-full p-2 mb-4 border rounded" />
+                <button id="registerBtn" class="w-full bg-green-600 text-white p-2 rounded mb-2">Registrarse</button>
+                <p class="text-sm text-center">¿Ya tienes cuenta? <button id="switchToLogin"
+                        class="text-green-600 underline">Inicia sesión</button></p>
+            </div>
+
+        </div>
+    </div>
+
     <div class="min-h-screen flex flex-col">
         <!-- Encabezado -->
         <header class="bg-primary text-on-primary shadow-lg fixed top-0 left-0 w-full z-50">
