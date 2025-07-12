@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<HTML lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RateTheBooker</title>
+
+    <!-- Tailwind y fuentes -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js "></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Raleway:wght@300;400;600&display=swap"
+        rel="stylesheet">
+
+    <!-- Estilos personalizados -->
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Lógica personalizada -->
+    <script defer src="main.js"></script>
+</head>
+
+<body class="theme-amber">
+    <div class="min-h-screen flex flex-col">
+        <!-- Encabezado -->
+        <header class="bg-primary text-on-primary shadow-lg fixed top-0 left-0 w-full z-50">
+            <div class="container mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center">
+                <div class="flex items-center mb-4 md:mb-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mr-3" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253">
+                        </path>
+                    </svg>
+                    <h1 class="text-2xl md:text-3xl font-bold">RateTheBooker</h1>
+                </div>
+                <div class="flex flex-col md:flex-row gap-4">
+                    <span class="mr-2 text-sm hidden md:inline">Tema:</span>
+                    <div class="flex space-x-2">
+                        <button id="themeAmber"
+                            class="w-6 h-6 rounded-full bg-amber-600 border-2 border-white"></button>
+                        <button id="themeDark"
+                            class="w-6 h-6 rounded-full bg-gray-800 border-2 border-transparent"></button>
+                        <button id="themeCustom" class="w-6 h-6 rounded-full border-2 border-transparent"
+                            style="background-color: #12325c;"></button>
+                    </div>
+                </div>
+
+                <!-- Botones organizados en 2 columnas -->
+                <div class="grid grid-cols-2 gap-3 mt-4">
+                    <button id="addBookBtn"
+                        class="bg-accent hover-primary-light text-on-primary font-semibold py-1 px-2 rounded-lg flex items-center transition duration-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20"
+                            fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                        Añadir Libro
+                    </button>
+
+                    <button id="statsBtn"
+                        class="bg-accent hover-primary-light text-on-primary font-semibold py-1 px-2 rounded-lg flex items-center transition duration-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20"
+                            fill="currentColor">
+                            <path
+                                d="M5 3a1 1 0 011 1v10a1 1 0 11-2 0V4a1 1 0 011-1zm5 4a1 1 0 011 1v6a1 1 0 11-2 0V8a1 1 0 011-1zm5-3a1 1 0 011 1v9a1 1 0 11-2 0V5a1 1 0 011-1z" />
+                        </svg>
+                        Estadísticas
+                    </button>
+
+                    <button id="exportBooksBtn"
+                        class="bg-accent hover:bg-accent-light text-on-primary font-semibold py-1 px-2 rounded-lg flex items-center transition duration-300">
+                        ⬆ Exportar libros
+                    </button>
+
+                    <input type="file" id="importBooksInput" accept=".json" class="hidden" />
+                    <button id="importBooksBtn"
+                        class="bg-accent hover:bg-accent-light text-on-primary font-semibold py-1 px-2 rounded-lg flex items-center transition duration-300">
+                        ⬇ Importar libros
+                    </button>
+                </div>
+            </div>
+        </header>
+        <!-- Contenido principal -->
+        <main class="flex-grow container mx-auto px-4 py-0 mt-60 md:mt-32 lg:mt-20">
+            <!-- Filtros y búsqueda -->
+            <div class="mb-8 bg-primary-light rounded-lg shadow-md p-4">
+                <div class="flex flex-col md:flex-row gap-4">
+                    <button id="clearOutfilterBtn"
+                        class="justify-center bg-accent-light hover:bg-accent text-on-primary font-semibold py-1 px-2 rounded-lg flex items-center transition duration-300">
+                        Quitar filtros
+                    </button>
+
+                    <div class="flex-grow">
+                        <div class="relative">
+                            <input type="text" id="searchInput" placeholder="Buscar por título o autor..."
+                                class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 ring-primary">
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                class="h-5 w-5 text-gray-400 absolute left-3 top-2.5" viewBox="0 0 20 20"
+                                fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <main class="flex-grow container mx-auto px-4 py-t">
+                        <div class="flex flex-col gap-4">
+
+                            <select id="filterCategory"
+                                class="h-11 w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 ring-primary">
+                                <option value="">Todas los géneros</option>
+                                <option value="Novela">Novela</option>
+                                <option value="Ciencia Ficción">Ciencia Ficción</option>
+                                <option value="Fantasía">Fantasía</option>
+                                <option value="Historia">Historia</option>
+                                <option value="Poesía">Poesía</option>
+                                <option value="Misterio">Misterio</option>
+                                <option value="Biografía">Biografía</option>
+                                <option value="Autoayuda">Autoayuda</option>
+                            </select>
+                            <select id="filterFormat"
+                                class="h-11 w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 ring-primary">
+                                <option value="">Todos los formatos</option>
+                                <option value="Ebook">Ebook</option>
+                                <option value="Tapa blanda">Tapa blanda</option>
+                                <option value="Tapa dura">Tapa dura</option>
+                            </select>
+                            <select id="filterEstado"
+                                class="h-11 w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 ring-primary">
+                                <option value="">Todos los estados</option>
+                                <option value="Terminado">Terminado</option>
+                                <option value="Empezado">Empezado</option>
+                                <option value="Por empezar">Por empezar</option>
+                            </select>
+
+                        </div>
+                </div>
+                <main class="flex-grow container mx-auto px-4 py-t">
+                    <!-- Filtros y búsqueda -->
+
+                    <div class="flex flex-col gap-4 mt-1">
+                        <!-- Ordenar por -->
+                        <div>
+                            <label for="sortBooks" class="block text-primary text-l font-semibold py-1">Ordenar
+                                por...</label>
+                            <select id="sortBooks"
+                                class="h-11 w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-accent">
+                                <option value="title_asc">Título (A-Z)</option>
+                                <option value="title_desc">Título (Z-A)</option>
+                                <option value="author_asc">Autor (A-Z)</option>
+                                <option value="author_desc">Autor (Z-A)</option>
+                                <option value="rating_asc">Puntuación (0-5)</option>
+                                <option value="rating_desc">Puntuación (5-0)</option>
+                                <option value="endDate_asc">Fecha fin (antiguos primero)</option>
+                                <option value="endDate_desc">Fecha fin (recientes primero)</option>
+                                <option value="pages_asc">Páginas (0-∞)</option>
+                                <option value="pages_desc">Páginas (∞-0)</option>
+                            </select>
+                        </div>
+
+                        <!-- Desde y Hasta en la misma fila SIEMPRE -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="filterStartDate"
+                                    class="block text-primary text-l font-semibold py-1">Desde</label>
+                                <input type="date" id="filterStartDate"
+                                    class="h-11 w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-accent">
+                            </div>
+                            <div>
+                                <label for="filterEndDate"
+                                    class="block text-primary text-l font-semibold py-1">Hasta</label>
+                                <input type="date" id="filterEndDate"
+                                    class="h-11 w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-accent">
+                            </div>
+                        </div>
+                    </div>
+                </main>
+                <!-- Mensaje cuando no hay libros -->
+                <div id="emptyLibrary" class="text-center py-16 bg-white rounded-lg shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-accent mb-4" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253">
+                        </path>
+                    </svg>
+                    <h2 class="text-2xl font-bold text-gray-700 mb-2">Tu biblioteca está vacía</h2>
+                    <p class="text-gray-500 mb-6">Comienza añadiendo tu primer libro con el botón "Añadir Libro"</p>
+                    <button id="emptyAddBookBtn"
+                        class="bg-accent hover-primary-light text-on-primary font-semibold py-2 px-6 rounded-lg transition duration-300">
+                        Añadir mi primer libro
+                    </button>
+                </div>
+
+                <!-- Estantería de libros -->
+                <div id="bookshelf" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 hidden">
+                    <!-- Los libros se añadirán aquí dinámicamente -->
+                </div>
+        </main>
+
+        <!-- Pie de página -->
+        <footer class="bg-primary-dark text-on-primary py-6">
+            <div class="container mx-auto px-4 text-center">
+                <p>© 2025 RateTheBooker. Todos los derechos reservados.</p>
+            </div>
+        </footer>
+
+        <!-- Modal para añadir/editar libro -->
+        <div id="bookModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 h-[90vh] overflow-y-auto">
+                <div class="bg-primary text-on-primary py-4 px-6 flex justify-between items-center">
+                    <h3 id="modalTitle" class="text-xl font-bold">Añadir Nuevo Libro</h3>
+                    <button id="cancelBtn" class="text-white hover:text-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <!-- Contenedor con scroll -->
+                <div class="form-container">
+                    <form id="bookForm" class="p-6">
+                        <input type="hidden" id="bookId">
+                        <div class="mb-4">
+                            <label for="title" class="block text-gray-700 font-medium mb-2">Título</label>
+                            <input type="text" id="title" required=""
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 ring-primary">
+                        </div>
+                        <div class="mb-4">
+                            <label for="author" class="block text-gray-700 font-medium mb-2">Autor</label>
+                            <input type="text" id="author" required=""
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 ring-primary">
+                        </div>
+                        <div class="mb-4">
+                            <label for="pages" class="block text-gray-700 font-medium mb-2">Páginas</label>
+                            <input type="number" id="pages" required=""
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 ring-primary">
+                        </div>
+                        <div class="mb-4">
+                            <label for="category" class="block text-gray-700 font-medium mb-2">Género</label>
+                            <div class="flex gap-2">
+                                <select id="category" required=""
+                                    class="flex-grow border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 ring-primary">
+                                    <option value="">Selecciona un género</option>
+                                    <option value="Novela">Novela</option>
+                                    <option value="Ciencia Ficción">Ciencia Ficción</option>
+                                    <option value="Fantasía">Fantasía</option>
+                                    <option value="Historia">Historia</option>
+                                    <option value="Biografía">Biografía</option>
+                                    <option value="Autoayuda">Autoayuda</option>
+                                </select>
+                                <button type="button" id="addCategoryBtn"
+                                    class="bg-accent hover-primary-light text-on-primary font-semibold py-2 px-3 rounded-lg transition duration-300">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20"
+                                        fill="currentColor">
+                                        <path fill-rule="evenodd"
+                                            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                                            clip-rule="evenodd"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label for="format" class="block text-gray-700 font-medium mb-2">Formato</label>
+                            <select id="format" required=""
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 ring-primary">
+                                <option value="">Selecciona un formato</option>
+                                <option value="Ebook">Ebook</option>
+                                <option value="Tapa blanda">Tapa blanda</option>
+                                <option value="Tapa dura">Tapa dura</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <label for="terminado" class="block text-gray-700 font-medium mb-2">Estado</label>
+                            <select id="terminado" required=""
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 ring-primary">
+                                <option value="">Selecciona un Estado</option>
+                                <option value="Terminado">Terminado</option>
+                                <option value="Empezado">Empezado</option>
+                                <option value="Por empezar">Por empezar</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <!-- Fechas de lectura -->
+                            <div>
+                                <label for="startDate" class="block text-gray-700 font-medium mb-1">Fecha de
+                                    Inicio</label>
+                                <input type="date" id="startDate" name="startDate"
+                                    class="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-accent">
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <div>
+                                <label for="endDate" class="block text-gray-700 font-medium mb-1">Fecha de
+                                    Finalización</label>
+                                <input type="date" id="endDate" name="endDate"
+                                    class="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-accent">
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 font-medium mb-2">Puntuación</label>
+                            <div class="flex items-center">
+                                <div id="ratingStars" class="flex">
+                                    <span class="star star-empty text-2xl" data-value="1">★</span>
+                                    <span class="star star-empty text-2xl" data-value="2">★</span>
+                                    <span class="star star-empty text-2xl" data-value="3">★</span>
+                                    <span class="star star-empty text-2xl" data-value="4">★</span>
+                                    <span class="star star-empty text-2xl" data-value="5">★</span>
+                                </div>
+                                <span id="ratingValue" class="ml-2 text-gray-600">0/5</span>
+                                <input type="hidden" id="rating" value="0">
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label for="review" class="block text-gray-700 font-medium mb-2">Reseña</label>
+                            <textarea id="review" rows="3"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 ring-primary"></textarea>
+                        </div>
+                        <div class="mb-4">
+                            <label for="description" class="block text-gray-700 font-medium mb-2">Notas</label>
+                            <textarea id="description" rows="3"
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 ring-primary"></textarea>
+                        </div>
+                        <div class="flex justify-end gap-3 mt-6">
+                            <button type="submit"
+                                class="bg-accent hover-primary-light text-on-primary font-semibold py-2 px-4 rounded-lg transition duration-300">
+                                Guardar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para añadir categoría -->
+        <div id="categoryModal"
+            class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 overflow-hidden">
+                <div class="bg-primary text-on-primary py-4 px-6">
+                    <h3 class="text-xl font-bold">Añadir Nuevo Género</h3>
+                </div>
+                <form id="categoryForm" class="p-6">
+                    <div class="mb-4">
+                        <label for="newCategory" class="block text-gray-700 font-medium mb-2">Nombre del género</label>
+                        <input type="text" id="newCategory" required=""
+                            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 ring-primary">
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button type="button" id="cancelCategoryBtn"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition duration-300">
+                            Cancelar
+                        </button>
+                        <button type="submit"
+                            class="bg-accent hover-primary-light text-on-primary font-semibold py-2 px-4 rounded-lg transition duration-300">
+                            Añadir
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal para ver detalles del libro -->
+        <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+
+            <!-- Contenedor principal del modal -->
+            <div
+                class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 h-auto max-h-[90vh] overflow-hidden flex flex-col relative">
+
+                <!-- Cabecera del modal -->
+                <div id="detailHeader" class="bg-primary text-on-primary py-4 px-6 flex justify-between items-center">
+                    <h3 id="detailTitle" class="text-xl font-bold">Título del Libro</h3>
+                    <button id="closeDetailBtn" class="text-white hover:text-gray-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Contenido con scroll -->
+                <div class="p-6 space-y-4 overflow-y-auto form-container flex-1">
+
+                    <!-- Portada y puntuación -->
+                    <div class="flex flex-col items-center space-y-4">
+                        <!-- Portada del libro -->
+
+                        <!-- Puntuación -->
+                        <div class="text-center">
+                            <div class="flex items-center justify-center">
+                                <div id="detailRatingStars" class="flex text-xl">
+                                    <!-- Estrellas dinámicas -->
+                                </div>
+                                <span id="detailRatingValue" class="ml-2 text-gray-600">0/5</span>
+                            </div>
+                        </div>
+                        <!-- Dentro de #detailModal .form-container -->
+                        <div>
+                            <p class="text-gray-500">Reseña</p>
+                            <div id="detailReview"
+                                class="text-gray-800 font-light bg-gray-50 p-3 rounded-md whitespace-pre-line">
+                            </div>
+                        </div>
+
+                        <!-- Botón de compartir -->
+                        <div class="mt-4 flex justify-end">
+                            <button id="shareToBookstagramBtn"
+                                class="bg-pink-600 hover:bg-pink-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path
+                                        d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm6.061 14.927c.293-.166.595-.342.887-.54a8.014 8.014 0 01-2.357 2.357 8.636 8.636 0 01-3.52.735c-4.748 0-8.602-3.854-8.602-8.602 0-.94.156-1.848.453-2.695a8.593 8.593 0 012.57-3.214c-.264.44-.498.9.714 2.115l1.77-1.77a8.566 8.566 0 01-2.994-6.135c0-.469.036-.933.105-1.388a12.014 12.014 0 00-1.726 6.053c0 4.748 3.854 8.602 8.602 8.602 1.528 0 2.952-.396 4.196-1.087a8.597 8.597 0 01-2.57-3.214c-.27.185-.55.36-.84.527a8.61 8.61 0 01-2.14 1.141 8.58 8.58 0 01-1.141 2.14 8.624 8.624 0 01-3.347 2.304c.282-.497.595-.976.935-1.434a12.02 12.02 0 006.053-1.726c-.455.069-.919.105-1.388.105z" />
+                                </svg>
+                                Compartir en Bookstagram
+                            </button>
+                        </div>
+                        <div class="mt-4 flex justify-end">
+                            <button id="exportToPdfBtn"
+                                class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none"
+                                    viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3h18v-3M3 3l18 18" />
+                                </svg>
+                                Exportar Reseña a PDF
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Datos principales -->
+                    <div class="space-y-3">
+                        <div>
+                            <p class="text-gray-500">Autor</p>
+                            <p id="detailAuthor" class="text-gray-800 font-medium">Nombre del Autor</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Estado</p>
+                            <p id="detailEstado" class="text-gray-800 font-medium">No especificado</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Fecha Inicio</p>
+                            <p id="detailStartDate" class="text-gray-800 font-medium">Fecha de Inicio</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Fecha Fin</p>
+                            <p id="detailEndDate" class="text-gray-800 font-medium">Fecha de Finalización</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Género</p>
+                            <p id="detailCategory" class="text-gray-800 font-medium">Género del Libro</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Formato</p>
+                            <p id="detailFormat" class="text-gray-800 font-medium">Formato del Libro</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Páginas</p>
+                            <p id="detailPages" class="text-gray-800 font-medium">Total de páginas</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Notas</p>
+                            <p id="detailDescription" class="text-gray-800">Sin notas</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botones fijos en la parte inferior -->
+                <div
+                    class="flex flex-col sm:flex-row justify-between gap-4 p-6 border-t border-gray-200 bg-white sticky bottom-0 z-10">
+                    <!-- Botón Eliminar -->
+                    <button id="deleteBookBtn"
+                        class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 w-full sm:w-auto">
+                        Eliminar
+                    </button>
+
+                    <!-- Botón Compartir -->
+                    <button id="shareBookBtn"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition duration-300 w-full sm:w-auto">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                        </svg>
+                        Compartir Libro
+                    </button>
+
+                    <!-- Botón Editar -->
+                    <button id="editBookBtn"
+                        class="bg-accent hover:bg-accent-light text-on-primary font-semibold py-2 px-4 rounded-lg transition duration-300 w-full sm:w-auto">
+                        Editar
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Modal de confirmación para eliminar -->
+        <div id="confirmModal"
+            class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 overflow-hidden">
+                <div class="p-6">
+                    <div class="flex items-center justify-center mb-4 text-red-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                            </path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-center mb-2">¿Eliminar libro?</h3>
+                    <p class="text-gray-600 text-center mb-6">Esta acción no se puede deshacer. ¿Estás seguro de que
+                        deseas eliminar este libro de tu biblioteca?</p>
+                    <div class="flex justify-center gap-3">
+                        <button id="cancelDeleteBtn"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg transition duration-300">
+                            Cancelar
+                        </button>
+                        <button id="confirmDeleteBtn"
+                            class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+                            Eliminar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Modal de Estadísticas -->
+    <div id="statsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div
+            class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 h-[90vh] overflow-hidden flex flex-col relative">
+
+            <!-- Cabecera -->
+            <div class="bg-primary text-on-primary py-4 px-6 flex justify-between items-center">
+                <h3 class="text-xl font-bold">Estadísticas de la Biblioteca</h3>
+                <button id="closeStatsBtn" class="text-white hover:text-gray-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Contenido con scroll -->
+            <div class="p-6 space-y-4 overflow-y-auto form-container flex-1">
+
+                <!-- Filtro de Fechas -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="statsStartDate" class="block text-black text-l font-semibold">Desde</label>
+                        <input type="date" id="statsStartDate"
+                            class="h-10 w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-accent">
+                    </div>
+                    <div>
+                        <label for="statsEndDate" class="block text-black text-l font-semibold">Hasta</label>
+                        <input type="date" id="statsEndDate"
+                            class="h-10 w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-accent">
+                    </div>
+                    <div>
+                        <label for="statsYear" class="block text-black text-l font-semibold">Año</label>
+                        <select id="statsYear"
+                            class="h-10 w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-accent">
+                            <!-- Opciones se llenarán por JS -->
+                        </select>
+                    </div>
+                    <div>
+                        <label for="statsCategory" class="block text-black text-l font-semibold">Géneros</label>
+                        <select id="statsCategory"
+                            class="h-10 w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-accent">
+                            <!-- Opciones se llenarán por JS -->
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Aquí irá el contenido de las estadísticas dinámicas -->
+                <div id="statsContent" class="space-y-4 mt-4">
+                    <!-- Por ejemplo: Total libros leídos, total páginas, etc... -->
+                    <p>Selecciona rango de fechas o género y pulsa para ver estadísticas...</p>
+                </div>
+            </div>
+
+            <!-- Botón para refrescar las estadísticas -->
+            <div class="flex justify-end p-6 border-t border-gray-200 bg-white sticky bottom-0 z-10">
+                <button id="refreshStatsBtn"
+                    class="bg-accent hover:bg-accent-light text-on-primary font-semibold py-2 px-4 rounded-lg transition duration-300">
+                    Actualizar estadísticas
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+
+
+</body>
+<iframe height="1" width="1"
+    style="position: absolute; top: 0px; left: 0px; border: none; visibility: hidden;"></iframe>
+
+</html>
